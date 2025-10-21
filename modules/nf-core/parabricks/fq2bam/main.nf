@@ -46,12 +46,19 @@ process PARABRICKS_FQ2BAM {
 
     def num_gpus   = task.accelerator ? "--num-gpus ${task.accelerator.request}" : ''
     """
-    INDEX=`find -L ./ -name "*.amb" | sed 's/\\.amb\$//'`
-    cp ${fasta} \$INDEX
+    # The section below creates a symlink to the reference fasta file in the index directory
+    # It is a Parabricks requirement that these files be in the same place
+    # As of Parabricks version 4.6 the symlink is sufficient and we no longer need to copy the file
+
+    fasta_basename=\$(basename ${fasta})
+    cd ${index} && \
+        ln -s ../\$fasta_basename \$fasta_basename && \
+        cd -
 
     pbrun \\
         fq2bam \\
-        --ref \$INDEX \\
+        --preserve-file-symlinks \\
+        --ref ${index}/\$fasta_basename \\
         ${in_fq_command} \\
         --out-bam ${prefix}.${extension} \\
         ${known_sites_command} \\
